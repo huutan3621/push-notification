@@ -7,17 +7,17 @@ import {
   Param,
   Delete,
 } from '@nestjs/common';
-import { CreateNotificationDto } from './dto/create-notification-dto';
 import { UpdateNotificationDto } from './dto/update-notification-dto';
 import { NotificationService } from './notification.service';
+import { sendNotificationDTO } from './dto/send-notification.dto';
 
 @Controller('Notification')
 export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
 
   @Post()
-  create(@Body() createNotificationDto: CreateNotificationDto) {
-    return this.notificationService.create(createNotificationDto);
+  sendNotification(@Body() pushNotification: sendNotificationDTO) {
+    this.notificationService.sendPush(pushNotification);
   }
 
   @Get('')
