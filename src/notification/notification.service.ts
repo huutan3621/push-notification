@@ -39,7 +39,12 @@ export class NotificationService {
   }
 
   async sendPush(notification: sendNotificationDTO) {
+    if (!notification.deviceId) {
+      return { success: false, message: 'Device ID is required' };
+    }
+
     try {
+      // Attempt to send the notification
       const response = await this.firebaseAdmin.defaultApp.messaging().send({
         notification: {
           title: notification.title,
@@ -66,11 +71,31 @@ export class NotificationService {
           },
         },
       });
+
+      // Return success response
       console.log('Notification sent successfully:', response);
-      return response;
+      return {
+        success: true,
+        message: 'Notification sent successfully',
+        response,
+      };
     } catch (error) {
+      // General error handling
       console.error('Error sending notification:', error);
-      throw error;
+
+      // Check if error is an instance of FirebaseMessagingError
+      if (error && typeof error === 'object' && 'errorInfo' in error) {
+        return {
+          success: false,
+          message: `Failed to send notification: ${error.errorInfo.message}`,
+        };
+      }
+
+      // Handle other cases
+      return {
+        success: false,
+        message: 'An unexpected error occurred while sending notification',
+      };
     }
   }
 }
