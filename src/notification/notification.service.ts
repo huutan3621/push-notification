@@ -11,6 +11,10 @@ export class NotificationService {
     private readonly firebaseAdmin: { defaultApp: admin.app.App },
   ) {}
 
+  private get firestore() {
+    return this.firebaseAdmin.defaultApp.firestore();
+  }
+
   create(createNotificationDto: CreateNotificationDto) {
     console.log(createNotificationDto);
     return 'This action adds a new notification';
@@ -38,7 +42,73 @@ export class NotificationService {
     return 'This action removes a #${id} notification';
   }
 
-  async sendPush(notification: sendNotificationDTO) {
+  async sendPushToAll(notification: sendNotificationDTO) {
+    try {
+      // Retrieve all device IDs from Firestore
+      const devicesSnapshot = await this.firestore.collection('devices').get();
+      const deviceIds = devicesSnapshot.docs.map((doc) => doc.data().deviceId);
+
+      // Send notification to each device ID
+      const sendPromises = deviceIds.map((deviceId) =>
+        this.sendPushToDevice(notification, deviceId),
+      );
+      const results = await Promise.all(sendPromises);
+
+      return {
+        success: true,
+        message: 'Notifications sent to all devices',
+        results,
+      };
+    } catch (error) {
+      console.error('Error sending notifications to all devices:', error);
+      return {
+        success: false,
+        message: 'An error occurred while sending notifications',
+      };
+    }
+  }
+
+  private async sendPushToDevice(
+    notification: sendNotificationDTO,
+    deviceId: string,
+  ) {
+    try {
+      const response = await this.firebaseAdmin.defaultApp.messaging().send({
+        notification: {
+          title: notification.title,
+          body: notification.body,
+        },
+        token: deviceId,
+        data: {},
+        android: {
+          priority: 'high',
+          notification: {
+            sound: 'default',
+            channelId: 'default',
+          },
+        },
+        apns: {
+          headers: {
+            'apns-priority': '10',
+          },
+          payload: {
+            aps: {
+              contentAvailable: true,
+              sound: 'default',
+            },
+          },
+        },
+      });
+
+      console.log(`Notification sent successfully to ${deviceId}:`, response);
+      return { deviceId, success: true, response };
+    } catch (error) {
+      console.error(`Error sending notification to ${deviceId}:`, error);
+      return { deviceId, success: false, error };
+    }
+  }
+
+  async sendPush(notification: sendNotificationDTO, id: string) {
     if (!notification.deviceId) {
       return { success: false, message: 'Device ID is required' };
     }
@@ -50,7 +120,7 @@ export class NotificationService {
           title: notification.title,
           body: notification.body,
         },
-        token: notification.deviceId,
+        token: id,
         data: {},
         android: {
           priority: 'high',

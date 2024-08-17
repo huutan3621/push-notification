@@ -11,13 +11,21 @@ import { UpdateNotificationDto } from './dto/update-notification-dto';
 import { NotificationService } from './notification.service';
 import { sendNotificationDTO } from './dto/send-notification.dto';
 
-@Controller('Notification')
+@Controller('notification')
 export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
 
-  @Post()
-  sendNotification(@Body() pushNotification: sendNotificationDTO) {
-    this.notificationService.sendPush(pushNotification);
+  @Post('sendNotiToDevice/:id')
+  sendNotification(
+    @Body() pushNotification: sendNotificationDTO,
+    @Param('id') id: string,
+  ) {
+    this.notificationService.sendPush(pushNotification, id);
+  }
+
+  @Post('sendNotiToAll')
+  sendNotificationToAll(@Body() pushNotification: sendNotificationDTO) {
+    this.notificationService.sendPushToAll(pushNotification);
   }
 
   @Get('')
