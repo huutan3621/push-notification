@@ -46,11 +46,13 @@ export class NotificationService {
     try {
       // Retrieve all device IDs from Firestore
       const devicesSnapshot = await this.firestore.collection('devices').get();
-      const deviceIds = devicesSnapshot.docs.map((doc) => doc.data().deviceId);
+      const deviceTokens = devicesSnapshot.docs.map(
+        (doc) => doc.data().deviceToken,
+      );
 
       // Send notification to each device ID
-      const sendPromises = deviceIds.map((deviceId) =>
-        this.sendPushToDevice(notification, deviceId),
+      const sendPromises = deviceTokens.map((deviceToken) =>
+        this.sendPushToDevice(notification, deviceToken),
       );
       const results = await Promise.all(sendPromises);
 
@@ -114,7 +116,6 @@ export class NotificationService {
     }
 
     try {
-      // Attempt to send the notification
       const response = await this.firebaseAdmin.defaultApp.messaging().send({
         notification: {
           title: notification.title,
@@ -142,7 +143,6 @@ export class NotificationService {
         },
       });
 
-      // Return success response
       console.log('Notification sent successfully:', response);
       return {
         success: true,
@@ -150,10 +150,8 @@ export class NotificationService {
         response,
       };
     } catch (error) {
-      // General error handling
       console.error('Error sending notification:', error);
 
-      // Check if error is an instance of FirebaseMessagingError
       if (error && typeof error === 'object' && 'errorInfo' in error) {
         return {
           success: false,
@@ -161,7 +159,6 @@ export class NotificationService {
         };
       }
 
-      // Handle other cases
       return {
         success: false,
         message: 'An unexpected error occurred while sending notification',
