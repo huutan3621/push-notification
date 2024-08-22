@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Delete,
+  HttpException,
+  HttpStatus,
+} from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { sendNotificationDTO } from './dto/send-notification.dto';
 
@@ -7,38 +16,50 @@ export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
 
   @Post('sendNotiToDevice/:id')
-  sendNotification(
+  async sendNotification(
     @Body() pushNotification: sendNotificationDTO,
     @Param('id') id: string,
   ) {
-    this.notificationService.sendPush(pushNotification, id);
+    const result = await this.notificationService.sendPush(
+      pushNotification,
+      id,
+    );
+    if (!result.success) {
+      throw new HttpException(result.message, HttpStatus.BAD_REQUEST);
+    }
+    return result;
   }
 
   @Post('sendNotiToAll')
-  sendNotificationToAll(@Body() pushNotification: sendNotificationDTO) {
-    this.notificationService.sendPushToAll(pushNotification);
+  async sendNotificationToAll(@Body() pushNotification: sendNotificationDTO) {
+    const result =
+      await this.notificationService.sendPushToAll(pushNotification);
+    if (!result.success) {
+      throw new HttpException(result.message, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+    return result;
   }
 
   @Get('getAll')
-  findAll() {
-    return this.notificationService.findAll();
+  async findAll() {
+    return await this.notificationService.findAll();
   }
 
   @Get('getNotiById/:id')
-  findOne(@Param('id') id: string) {
-    return this.notificationService.findOne(+id);
+  async findOne(@Param('id') id: string) {
+    const notification = await this.notificationService.findOne(+id);
+    if (!notification) {
+      throw new HttpException('Notification not found', HttpStatus.NOT_FOUND);
+    }
+    return notification;
   }
 
-  // @Patch('updateNoti/:id')
-  // update(
-  //   @Param('id') id: string,
-  //   @Body() updateNotificationDto: UpdateNotificationDto,
-  // ) {
-  //   return this.notificationService.update(+id, updateNotificationDto);
-  // }
-
   @Delete('removeNoti/:id')
-  remove(@Param('id') id: string) {
-    return this.notificationService.remove(+id);
+  async remove(@Param('id') id: string) {
+    const result = await this.notificationService.remove(+id);
+    if (!result.success) {
+      throw new HttpException(result.message, HttpStatus.NOT_FOUND);
+    }
+    return result;
   }
 }

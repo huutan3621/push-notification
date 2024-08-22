@@ -1,8 +1,8 @@
+import { Injectable, Inject } from '@nestjs/common';
+import * as admin from 'firebase-admin';
 import { sendNotificationDTO } from './dto/send-notification.dto';
 import { CreateNotificationDto } from './dto/create-notification-dto';
 import { UpdateNotificationDto } from './dto/update-notification-dto';
-import { Injectable, Inject } from '@nestjs/common';
-import * as admin from 'firebase-admin';
 
 @Injectable()
 export class NotificationService {
@@ -15,31 +15,55 @@ export class NotificationService {
     return this.firebaseAdmin.defaultApp.firestore();
   }
 
-  create(createNotificationDto: CreateNotificationDto) {
+  async create(createNotificationDto: CreateNotificationDto) {
     console.log(createNotificationDto);
+    // Implement your logic to save the notification to Firestore here
     return 'This action adds a new notification';
   }
 
-  findAll() {
-    return 'This action returns all notification';
+  async findAll() {
+    // Implement your logic to retrieve all notifications from Firestore
+    return 'This action returns all notifications';
   }
 
-  findOne(id: number) {
+  async findOne(id: number) {
     console.log(id);
-
-    return 'This action return a #${id} notification';
+    // Implement your logic to retrieve a specific notification from Firestore
+    return `This action returns notification #${id}`;
   }
 
-  update(id: number, updateNotificationDto: UpdateNotificationDto) {
+  async update(id: number, updateNotificationDto: UpdateNotificationDto) {
     console.log(updateNotificationDto);
-
-    return 'This action updates a #${updateNotificationDto} notification';
+    // Implement your logic to update the notification in Firestore
+    return `This action updates notification #${id}`;
   }
 
-  remove(id: number) {
-    console.log(id);
+  // async remove(id: number) {
+  //   console.log(id);
+  //   // Implement your logic to remove the notification from Firestore
+  //   return `This action removes notification #${id}`;
+  // }
 
-    return 'This action removes a #${id} notification';
+  //save to firebase
+  private async saveNotificationToFirestore(
+    notification: sendNotificationDTO,
+    deviceId: string,
+    messageId: string, // Change this to string
+  ) {
+    try {
+      const notificationData = {
+        title: notification.title,
+        body: notification.body,
+        deviceId: deviceId,
+        messageId: messageId, // Store the message ID instead
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      };
+
+      await this.firestore.collection('notifications').add(notificationData);
+      console.log(`Notification saved to Firestore for device ID: ${deviceId}`);
+    } catch (error) {
+      console.error('Error saving notification to Firestore:', error);
+    }
   }
 
   async sendPushToAll(notification: sendNotificationDTO) {
@@ -103,6 +127,10 @@ export class NotificationService {
       });
 
       console.log(`Notification sent successfully to ${deviceId}:`, response);
+
+      // Save the notification to Firestore
+      await this.saveNotificationToFirestore(notification, deviceId, response);
+
       return { deviceId, success: true, response };
     } catch (error) {
       console.error(`Error sending notification to ${deviceId}:`, error);
@@ -144,6 +172,8 @@ export class NotificationService {
       });
 
       console.log('Notification sent successfully:', response);
+      await this.saveNotificationToFirestore(notification, id, response);
+
       return {
         success: true,
         message: 'Notification sent successfully',
@@ -163,6 +193,22 @@ export class NotificationService {
         success: false,
         message: 'An unexpected error occurred while sending notification',
       };
+    }
+  }
+
+  async remove(id: number) {
+    try {
+      const notificationRef = this.firestore
+        .collection('notifications')
+        .doc(id.toString());
+      await notificationRef.delete();
+      return {
+        success: true,
+        message: `Notification with ID ${id} has been removed`,
+      };
+    } catch (error) {
+      console.error(`Error removing notification with ID ${id}:`, error);
+      return { success: false, message: 'Error removing notification' };
     }
   }
 }
