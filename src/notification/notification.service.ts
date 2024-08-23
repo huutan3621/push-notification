@@ -118,7 +118,7 @@ export class NotificationService {
     }
 
     try {
-      const response = await this.firebaseAdmin.defaultApp.messaging().send({
+      const message: admin.messaging.Message = {
         notification: {
           title: notification.title,
           body: notification.body,
@@ -136,7 +136,7 @@ export class NotificationService {
           notification: {
             sound: 'default',
             channelId: 'default',
-            imageUrl: notification.imageUrl,
+            ...(notification.imageUrl && { imageUrl: notification.imageUrl }), // Include only if imageUrl is provided
           },
         },
         apns: {
@@ -150,10 +150,14 @@ export class NotificationService {
             },
           },
           fcmOptions: {
-            imageUrl: notification.imageUrl,
+            ...(notification.imageUrl && { imageUrl: notification.imageUrl }), // Include only if imageUrl is provided
           },
         },
-      });
+      };
+
+      const response = await this.firebaseAdmin.defaultApp
+        .messaging()
+        .send(message);
 
       console.log('Notification sent successfully:', response);
       await this.saveNotificationToFirestore(notification, tokenId, response);
