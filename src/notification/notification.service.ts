@@ -48,18 +48,23 @@ export class NotificationService {
   private async saveNotificationToFirestore(
     notification: sendNotificationDTO,
     deviceId: string,
-    messageId: string, // Change this to string
+    messageId: string,
   ) {
     try {
       const notificationData = {
         title: notification.title,
         body: notification.body,
-        deviceId: deviceId,
-        messageId: messageId, // Store the message ID instead
+        messageId: messageId, // Store the message ID
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
       };
 
-      await this.firestore.collection('notifications').add(notificationData);
+      // Save the notification under `notifications/{deviceId}`
+      await this.firestore
+        .collection('notifications')
+        .doc(deviceId)
+        .collection('messages')
+        .add(notificationData);
+
       console.log(`Notification saved to Firestore for device ID: ${deviceId}`);
     } catch (error) {
       console.error('Error saving notification to Firestore:', error);
@@ -68,16 +73,29 @@ export class NotificationService {
 
   async sendPushToAll(notification: sendNotificationDTO) {
     try {
-      // Retrieve all device IDs from Firestore
+      // Retrieve all device documents from Firestore
       const devicesSnapshot = await this.firestore.collection('devices').get();
-      const deviceTokens = devicesSnapshot.docs.map(
-        (doc) => doc.data().deviceToken,
-      );
+      const sendPromises = devicesSnapshot.docs.map(async (doc) => {
+        const deviceData = doc.data();
+        const deviceToken = deviceData.deviceToken;
 
-      // Send notification to each device ID
-      const sendPromises = deviceTokens.map((deviceToken) =>
-        this.sendPushToDevice(notification, deviceToken),
-      );
+        if (deviceToken) {
+          // Create a copy of the notification DTO and set the deviceToken
+          const notificationWithToken = { ...notification, deviceToken };
+          const response = await this.sendPush(
+            notificationWithToken,
+            deviceToken,
+          ); // Pass the notification with deviceToken
+          return response;
+        } else {
+          return {
+            success: false,
+            message: 'Device token is missing',
+          };
+        }
+      });
+
+      // Await all notification sending promises
       const results = await Promise.all(sendPromises);
 
       return {
@@ -94,52 +112,8 @@ export class NotificationService {
     }
   }
 
-  private async sendPushToDevice(
-    notification: sendNotificationDTO,
-    deviceId: string,
-  ) {
-    try {
-      const response = await this.firebaseAdmin.defaultApp.messaging().send({
-        notification: {
-          title: notification.title,
-          body: notification.body,
-        },
-        token: deviceId,
-        data: {},
-        android: {
-          priority: 'high',
-          notification: {
-            sound: 'default',
-            channelId: 'default',
-          },
-        },
-        apns: {
-          headers: {
-            'apns-priority': '10',
-          },
-          payload: {
-            aps: {
-              contentAvailable: true,
-              sound: 'default',
-            },
-          },
-        },
-      });
-
-      console.log(`Notification sent successfully to ${deviceId}:`, response);
-
-      // Save the notification to Firestore
-      await this.saveNotificationToFirestore(notification, deviceId, response);
-
-      return { deviceId, success: true, response };
-    } catch (error) {
-      console.error(`Error sending notification to ${deviceId}:`, error);
-      return { deviceId, success: false, error };
-    }
-  }
-
-  async sendPush(notification: sendNotificationDTO, id: string) {
-    if (!notification.deviceId) {
+  async sendPush(notification: sendNotificationDTO, tokenId: string) {
+    if (!notification.deviceToken) {
       return { success: false, message: 'Device ID is required' };
     }
 
@@ -149,13 +123,20 @@ export class NotificationService {
           title: notification.title,
           body: notification.body,
         },
-        token: id,
-        data: {},
+        token: tokenId,
+        data: {
+          id: notification.id,
+          title: notification.title,
+          body: notification.body,
+          imageUrl: notification.imageUrl || '',
+          deviceToken: notification.deviceToken || '',
+        },
         android: {
           priority: 'high',
           notification: {
             sound: 'default',
             channelId: 'default',
+            imageUrl: notification.imageUrl,
           },
         },
         apns: {
@@ -168,11 +149,14 @@ export class NotificationService {
               sound: 'default',
             },
           },
+          fcmOptions: {
+            imageUrl: notification.imageUrl,
+          },
         },
       });
 
       console.log('Notification sent successfully:', response);
-      await this.saveNotificationToFirestore(notification, id, response);
+      await this.saveNotificationToFirestore(notification, tokenId, response);
 
       return {
         success: true,

@@ -8,7 +8,7 @@ export class CreateNotificationDto {
   @ApiProperty()
   body: string;
   @ApiProperty()
-  deviceId: string;
+  deviceToken: string;
   @ApiProperty()
   type: string;
   @ApiProperty()

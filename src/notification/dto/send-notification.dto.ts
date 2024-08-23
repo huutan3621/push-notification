@@ -7,7 +7,7 @@ export class sendNotificationDTO {
   @ApiProperty()
   body: string;
   @ApiProperty()
-  deviceId: string;
+  deviceToken: string;
   @ApiProperty()
   type: string;
   @ApiProperty()
