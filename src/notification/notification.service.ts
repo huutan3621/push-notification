@@ -130,6 +130,7 @@ export class NotificationService {
           body: notification.body,
           imageUrl: notification.imageUrl || '',
           deviceToken: notification.deviceToken || '',
+          keyPage: notification.keyPage || '',
         },
         android: {
           priority: 'high',
