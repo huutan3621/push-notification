@@ -9,7 +9,7 @@ export class sendNotificationDTO {
   @ApiProperty()
   deviceToken: string;
   @ApiProperty()
-  type: string;
+  keyPage: string;
   @ApiProperty()
   imageUrl: string;
 }
