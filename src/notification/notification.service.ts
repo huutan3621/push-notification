@@ -56,6 +56,9 @@ export class NotificationService {
         body: notification.body,
         messageId: messageId, // Store the message ID
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        imageUrl: notification.imageUrl || '',
+        deviceToken: notification.deviceToken || '',
+        keyPage: notification.keyPage || '',
       };
 
       // Save the notification under `notifications/{deviceId}`
